@@ -32,7 +32,7 @@ jobs:
     if: github.event_name != 'issue_comment' || startsWith(github.event.comment.body, '/remind')
     runs-on: ubuntu-latest
     steps:
-      - uses: cserranno85-jpg/GitHub-reminders@v1.0.0
+      - uses: caivra-tech/GitHub-reminders@v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
