@@ -32,7 +32,7 @@ jobs:
     if: github.event_name != 'issue_comment' || startsWith(github.event.comment.body, '/remind')
     runs-on: ubuntu-latest
     steps:
-      - uses: cserranno85-jpg/GitHub-reminders@v1
+      - uses: cserranno85-jpg/GitHub-reminders@v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -49,7 +49,7 @@ No custom secret is required. The workflow uses GitHub's repository-scoped `GITH
 
 ## Version pinning
 
-For convenient stable usage, use the `v1` release line. For higher assurance, pin the Action to an exact release commit SHA.
+The published V1 release tag is `v1.0.0` (not `v1`). For higher assurance, pin the Action to the reviewed immutable commit `a98d0af72b02ffa5b11d6599cdafa09036041afe`. A repository ownership transfer requires checking and updating the owner portion of `uses:` references and verifying a workflow execution against the destination repository.
 
 ## Scheduling behavior
 
