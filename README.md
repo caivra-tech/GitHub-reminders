@@ -54,7 +54,7 @@ See the full [Installation Guide](docs/INSTALLATION.md).
 For V1, pin the Action to:
 
 ```yaml
-uses: cserranno85-jpg/GitHub-reminders@v1
+uses: cserranno85-jpg/GitHub-reminders@v1.0.0
 ```
 
 For higher assurance, pin to an exact commit SHA.
