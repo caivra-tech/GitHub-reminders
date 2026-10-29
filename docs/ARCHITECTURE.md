@@ -23,7 +23,7 @@ The hidden marker is versioned so future releases can evolve the format delibera
 
 ## Reliability
 
-Delivery is at-least-once at the scheduler boundary, with an idempotency marker used to avoid intentional duplicate reminder comments after partial workflow failures.
+Delivery is **at-least-once, duplicate-resistant**, not exactly-once. The supplied workflow serializes all runs per repository with GitHub Actions concurrency, and a trusted delivery marker suppresses sequential retries after a delivery has been observed. If delivery succeeds but the source-marker update fails, the next serialized scan repairs that state without intentionally posting again. An API timeout can still leave a post outcome unknown, and GitHub offers no transaction across comment creation and marker update; exactly-once delivery is not claimed.
 
 GitHub Actions scheduling is not real-time. The Action therefore makes no deadline-grade delivery guarantee.
 
