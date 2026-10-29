@@ -34,7 +34,7 @@ GitHub itself is the durable reminder store. When a reminder is created, the Act
 issue/PR comment -> GitHub Action -> hidden reminder marker -> scheduled scan -> GitHub mention
 ```
 
-Delivery comments include an idempotency marker so the same reminder is not intentionally re-fired after partial workflow failure or later scheduled scans.
+Delivery comments include a trusted idempotency marker. The supplied workflow serializes runs per repository and avoids intentional duplicate posts after ordinary partial failures or later scans. Because GitHub comment creation and marker updates are not one transaction, delivery is at-least-once and duplicate-resistant, not exactly-once.
 
 ## Install
 
@@ -102,7 +102,7 @@ Included:
 - listing active reminders on the current issue/PR;
 - creator-only cancellation;
 - scheduled GitHub-native delivery;
-- idempotent exactly-once delivery protection;
+- serialized, duplicate-resistant at-least-once delivery;
 - no runtime dependencies;
 - Node.js built-in test suite;
 - end-to-end live smoke testing on canonical `main`.
