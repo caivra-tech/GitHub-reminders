@@ -34,7 +34,7 @@ GitHub itself is the durable reminder store. When a reminder is created, the Act
 issue/PR comment -> GitHub Action -> hidden reminder marker -> scheduled scan -> GitHub mention
 ```
 
-Delivery comments include a trusted idempotency marker. The supplied workflow serializes runs per repository and avoids intentional duplicate posts after ordinary partial failures or later scans. Because GitHub comment creation and marker updates are not one transaction, delivery is at-least-once and duplicate-resistant, not exactly-once.
+Delivery comments include a trusted idempotency marker. The supplied workflow serializes runs per repository with a bounded queue (up to 100 pending runs) and avoids intentional duplicate posts after ordinary partial failures or later scans. Excess queued runs may be cancelled; consumers must monitor workflow failures and queue saturation. Because GitHub comment creation and marker updates are not one transaction, delivery is at-least-once and duplicate-resistant, not exactly-once.
 
 ## Install
 
