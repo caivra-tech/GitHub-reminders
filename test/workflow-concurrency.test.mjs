@@ -31,7 +31,7 @@ test("consumer workflow serializes all triggers in one uniquely named, bounded c
   assert.match(example, /^\s+schedule:\s*$/m);
   assert.match(example, /^\s+workflow_dispatch:\s*$/m);
   assert.doesNotMatch(expected.group, /github\.ref|github\.event_name|github\.run_id/);
-  assert.match(example, /^\s+- uses: caivra-tech\/GitHub-reminders@v1\.0\.0\s*$/m);
+  assert.match(example, /^\s+- uses: caivra-tech\/GitHub-reminders@v1\.0\.1\s*$/m);
 });
 
 test("installation example matches the shipped workflow's concurrency configuration", () => {
@@ -41,11 +41,15 @@ test("installation example matches the shipped workflow's concurrency configurat
   assert.match(install, /not a durable command queue/i);
   assert.match(install, /second copy|second reminder workflow/i);
   assert.match(install, /creation command can create duplicates/i);
+  assert.match(install, /GitHub-reminders@v1\.0\.1/);
+  assert.match(install, /best-effort and duplicate-resistant/);
+  assert.doesNotMatch(install, /documented guarantee is[^\n]*at-least-once/i);
 });
 
 test("README and architecture avoid unsupported delivery guarantees", () => {
   assert.match(readme, /best-effort, duplicate-resistant delivery/);
   assert.match(readme, /without a bot acknowledgement/);
+  assert.match(readme, /GitHub-reminders@v1\.0\.1/);
   assert.match(architecture, /does \*\*not\*\* guarantee at-least-once delivery/);
   assert.match(architecture, /queue overflow/);
   assert.match(architecture, /no guaranteed FIFO order/);
