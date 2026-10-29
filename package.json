@@ -4,10 +4,10 @@
   "private": true,
   "description": "Free, open-source reminders for GitHub issues and pull requests, maintained by Caivra Tech LLC.",
   "author": "Caivra Tech LLC",
-  "homepage": "https://github.com/cserranno85-jpg/GitHub-reminders",
+  "homepage": "https://github.com/caivra-tech/GitHub-reminders",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cserranno85-jpg/GitHub-reminders.git"
+    "url": "https://github.com/caivra-tech/GitHub-reminders.git"
   },
   "type": "module",
   "engines": {"node": ">=20"},
