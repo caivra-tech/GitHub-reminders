@@ -1,6 +1,8 @@
 import crypto from "node:crypto";
 
 export const MARKER_PREFIX = "github-reminders:v1";
+const GITHUB_ACTIONS_BOT_ID = 41898282;
+const GITHUB_ACTIONS_APP_ID = 15368;
 const MAX_TEXT = 500;
 const MAX_DELAY_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 
@@ -67,6 +69,35 @@ export function decodeMarker(body) {
   }
 }
 
+/** A marker is data, not authority. GitHub API actor and App provenance decide trust. */
+export function trustedReminderFromComment(comment, expectedIssueNumber) {
+  if (!isGitHubActionsComment(comment)) return null;
+  return validateReminder(decodeMarker(comment.body), expectedIssueNumber);
+}
+
+export function isGitHubActionsComment(comment) {
+  const actor = comment?.user;
+  const app = comment?.performed_via_github_app;
+  return actor?.id === GITHUB_ACTIONS_BOT_ID
+    && actor?.login === "github-actions[bot]"
+    && actor?.type === "Bot"
+    && app?.id === GITHUB_ACTIONS_APP_ID
+    && app?.slug === "github-actions";
+}
+
+export function validateReminder(value, expectedIssueNumber) {
+  if (!value || typeof value !== "object") return null;
+  if (!/^[a-f0-9]{8}$/.test(value.id ?? "")) return null;
+  if (!/^[A-Za-z0-9-]+$/.test(value.creator ?? "")) return null;
+  if (!Number.isSafeInteger(value.issueNumber) || value.issueNumber <= 0 || value.issueNumber !== expectedIssueNumber) return null;
+  if (!isCanonicalIso(value.dueAt) || !isCanonicalIso(value.createdAt)) return null;
+  if (typeof value.text !== "string" || !value.text.trim() || value.text.length > MAX_TEXT) return null;
+  if (!["active", "cancelled", "sent"].includes(value.status)) return null;
+  if (value.status === "sent" && !isCanonicalIso(value.sentAt)) return null;
+  if (value.status !== "sent" && value.sentAt !== undefined) return null;
+  return value;
+}
+
 export function confirmationBody(reminder) {
   return `${encodeMarker(reminder)}\n⏰ Reminder **${reminder.id}** set for ${formatGitHubTime(reminder.dueAt)}. I’ll mention @${reminder.creator} here when it’s due.`;
 }
@@ -99,6 +130,10 @@ export function sanitizeMentions(text) {
 
 export function formatGitHubTime(iso) {
   return `<t:${Math.floor(Date.parse(iso) / 1000)}:F>`;
+}
+
+function isCanonicalIso(value) {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value)) && new Date(value).toISOString() === value;
 }
 
 function validateText(text) {
