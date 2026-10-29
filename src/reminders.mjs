@@ -5,12 +5,15 @@ const GITHUB_ACTIONS_BOT_ID = 41898282;
 const GITHUB_ACTIONS_APP_ID = 15368;
 const MAX_TEXT = 500;
 const MAX_DELAY_MS = 10 * 365 * 24 * 60 * 60 * 1000;
+const CLOCK_SKEW_MS = 5 * 60 * 1000;
+const REMINDER_ID_RE = /^(?:[a-f0-9]{8}|[a-f0-9]{32})$/;
+const USERNAME_RE = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/i;
 
 export function parseCommand(body, now = new Date()) {
   const input = String(body ?? "").trim();
   if (input === "/reminders") return { kind: "list" };
 
-  const cancel = input.match(/^\/remind\s+cancel\s+([a-f0-9]{8})\s*$/i);
+  const cancel = input.match(/^\/remind\s+cancel\s+((?:[a-f0-9]{8}|[a-f0-9]{32}))\s*$/i);
   if (cancel) return { kind: "cancel", id: cancel[1].toLowerCase() };
 
   const relative = input.match(/^\/remind\s+in\s+(\d+)\s*(minute|minutes|hour|hours|day|days|week|weeks)\s+([\s\S]+)$/i);
@@ -41,7 +44,7 @@ export function parseCommand(body, now = new Date()) {
 
 export function createReminder({ creator, issueNumber, dueAt, text, now = new Date() }) {
   return {
-    id: crypto.randomBytes(4).toString("hex"),
+    id: crypto.randomBytes(16).toString("hex"),
     creator,
     issueNumber,
     dueAt,
@@ -58,8 +61,9 @@ export function encodeMarker(reminder) {
 
 export function decodeMarker(body) {
   const text = String(body ?? "");
-  const match = text.match(/<!--\s+github-reminders:v1\n([\s\S]*?)\n-->/);
-  if (!match) return null;
+  const matches = [...text.matchAll(/<!--\s+github-reminders:v1\n([\s\S]*?)\n-->/g)];
+  if (matches.length !== 1) return null;
+  const match = matches[0];
   try {
     const value = JSON.parse(match[1]);
     if (!value || typeof value !== "object" || typeof value.id !== "string") return null;
@@ -69,10 +73,20 @@ export function decodeMarker(body) {
   }
 }
 
-/** A marker is data, not authority. GitHub API actor and App provenance decide trust. */
-export function trustedReminderFromComment(comment, expectedIssueNumber) {
+/** GitHub-authored provenance rejects human marker forgery, but any privileged
+ * workflow using the same repository GITHUB_TOKEN can impersonate this actor.
+ * Do not describe this check as Action-specific authentication. */
+export function trustedReminderFromComment(comment, expectedIssueNumber, expectedRepository, now = new Date()) {
   if (!isGitHubActionsComment(comment)) return null;
-  return validateReminder(decodeMarker(comment.body), expectedIssueNumber);
+  if (!Number.isSafeInteger(comment?.id) || comment.id <= 0) return null;
+  if (!commentMatchesIssue(comment, expectedIssueNumber, expectedRepository)) return null;
+  const value = validateReminder(decodeMarker(comment.body), expectedIssueNumber, now);
+  if (!value) return null;
+  // The original comment creation time is immutable even if its body is edited.
+  // Reject a marker copied from an older comment into a new bot-authored comment.
+  if (!isCanonicalIso(comment.created_at)) return null;
+  if (Math.abs(Date.parse(value.createdAt) - Date.parse(comment.created_at)) > CLOCK_SKEW_MS) return null;
+  return value;
 }
 
 export function isGitHubActionsComment(comment) {
@@ -85,16 +99,46 @@ export function isGitHubActionsComment(comment) {
     && app?.slug === "github-actions";
 }
 
-export function validateReminder(value, expectedIssueNumber) {
-  if (!value || typeof value !== "object") return null;
-  if (!/^[a-f0-9]{8}$/.test(value.id ?? "")) return null;
-  if (!/^[A-Za-z0-9-]+$/.test(value.creator ?? "")) return null;
+function commentMatchesIssue(comment, expectedIssueNumber, expectedRepository) {
+  if (!Number.isSafeInteger(expectedIssueNumber) || expectedIssueNumber <= 0) return false;
+  if (typeof comment.issue_url !== "string") return false;
+  try {
+    const u = new URL(comment.issue_url);
+    if (u.protocol !== "https:" || u.search || u.hash) return false;
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (parts.length < 5) return false;
+    const tail = parts.slice(-5);
+    if (tail[0] !== "repos" || tail[3] !== "issues" || tail[4] !== String(expectedIssueNumber)) return false;
+    if (expectedRepository && (tail[1] + "/" + tail[2]).toLowerCase() !== expectedRepository.toLowerCase()) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function validateReminder(value, expectedIssueNumber, now = new Date()) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  if (typeof value.id !== "string" || !REMINDER_ID_RE.test(value.id)) return null;
+  if (typeof value.creator !== "string" || !USERNAME_RE.test(value.creator)) return null;
   if (!Number.isSafeInteger(value.issueNumber) || value.issueNumber <= 0 || value.issueNumber !== expectedIssueNumber) return null;
   if (!isCanonicalIso(value.dueAt) || !isCanonicalIso(value.createdAt)) return null;
-  if (typeof value.text !== "string" || !value.text.trim() || value.text.length > MAX_TEXT) return null;
+  const createdMs = Date.parse(value.createdAt);
+  const dueMs = Date.parse(value.dueAt);
+  if (dueMs <= createdMs || dueMs - createdMs > MAX_DELAY_MS) return null;
+  if (createdMs > now.getTime() + CLOCK_SKEW_MS) return null;
+  if (typeof value.text !== "string" || !value.text.trim() || value.text.trim() !== value.text || value.text.length > MAX_TEXT) return null;
   if (!["active", "cancelled", "sent"].includes(value.status)) return null;
-  if (value.status === "sent" && !isCanonicalIso(value.sentAt)) return null;
-  if (value.status !== "sent" && value.sentAt !== undefined) return null;
+  const expectedKeys = value.status === "sent"
+    ? ["id", "creator", "issueNumber", "dueAt", "text", "status", "createdAt", "sentAt"]
+    : ["id", "creator", "issueNumber", "dueAt", "text", "status", "createdAt"];
+  if (Object.keys(value).length !== expectedKeys.length || expectedKeys.some((key) => !Object.hasOwn(value, key))) return null;
+  if (value.status === "sent") {
+    if (!isCanonicalIso(value.sentAt)) return null;
+    const sentMs = Date.parse(value.sentAt);
+    if (sentMs < dueMs || sentMs > now.getTime() + CLOCK_SKEW_MS) return null;
+  }
+  // Historical comments have no authenticated transition log, so old active,
+  // sent, or cancelled states cannot be cryptographically reconstructed.
   return value;
 }
 
@@ -113,11 +157,21 @@ export function sentMarkerBody(reminder) {
 }
 
 export function deliveryMarker(id) {
-  return `<!-- github-reminders:delivered:${id} -->`;
+  return "<!-- github-reminders:delivered:" + id + " -->";
 }
 
-export function dueReminderBody(reminder) {
-  return `${deliveryMarker(reminder.id)}\n⏰ @${reminder.creator}, reminder **${reminder.id}** is due now:\n\n> ${sanitizeMentions(reminder.text)}`;
+export function deliveryMarkerForComment(commentId) {
+  if (!Number.isSafeInteger(commentId) || commentId <= 0) throw new Error("Valid source comment ID is required.");
+  return "<!-- github-reminders:delivered-source:" + commentId + " -->";
+}
+
+export function reminderDeliveryMarker(reminder, commentId) {
+  // Preserve legacy v1 eight-digit delivery markers for old reminders.
+  return reminder.id.length === 8 ? deliveryMarker(reminder.id) : deliveryMarkerForComment(commentId);
+}
+
+export function dueReminderBody(reminder, sourceCommentId) {
+  return `${reminderDeliveryMarker(reminder, sourceCommentId)}\n⏰ @${reminder.creator}, reminder **${reminder.id}** is due now:\n\n> ${sanitizeMentions(reminder.text)}`;
 }
 
 export function isDue(reminder, now = new Date()) {
