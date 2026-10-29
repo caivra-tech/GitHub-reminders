@@ -12,7 +12,7 @@ test("listing neutralizes mentions embedded in reminder text", () => {
     const output = join(dir, "post.json");
     const mock = join(dir, "mock.mjs");
     writeFileSync(event, JSON.stringify({ action: "created", issue: { number: 1 }, comment: { user: { login: "owner", type: "User" }, body: "/reminders" } }));
-    const marker = '<!-- github-reminders:v1\n' + JSON.stringify({ id: "abcdef12", creator: "owner", issueNumber: 1, dueAt: "2030-01-01T00:00:00Z", text: "hello @other", status: "active" }) + '\n-->';
+    const marker = '<!-- github-reminders:v1\n' + JSON.stringify({ id: "abcdef12", creator: "owner", issueNumber: 1, dueAt: "2030-01-01T00:00:00.000Z", text: "hello @other", status: "active", createdAt: "2026-10-29T00:00:00.000Z" }) + '\n-->';
     writeFileSync(mock, `import { writeFileSync } from "node:fs";
 const marker = ${JSON.stringify({ body: marker, user: { id: 41898282, login: "github-actions[bot]", type: "Bot" }, performed_via_github_app: { id: 15368, slug: "github-actions" } })};
 globalThis.fetch = async (_url, options = {}) => {
