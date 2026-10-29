@@ -22,6 +22,11 @@ on:
     - cron: "*/15 * * * *"
   workflow_dispatch:
 
+concurrency:
+  group: caivra-tech-reminders-v1-${{ github.repository }}-${{ github.workflow }}
+  cancel-in-progress: false
+  queue: max
+
 permissions:
   contents: read
   issues: write
@@ -36,6 +41,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+## Delivery serialization
+
+Keep the example `concurrency` block, including `queue: max`. All triggers of **this one workflow** (issue comments, schedules, manual dispatch) use the same group: the project prefix, repository, and `github.workflow` name. Do **not** append `github.event_name`, `github.ref`, or a run ID: that would split the group and permit competing scans. Use a unique workflow name, and do not install a second copy of the reminder workflow; two different workflows are not a supported coordination model. An unrelated workflow configured with the **identical group value** would still interfere, because concurrency groups share a repository-wide namespace.
+
+GitHub retains at most **100 pending runs** with `queue: max` and `cancel-in-progress: false`. When full, **additional runs are cancelled rather than durably stored**. A `/remind`, `/reminders`, or `/remind cancel` comment can therefore fail to be processed, with no bot reply. This configuration is **not a durable command queue** and does not guarantee that commands are acknowledged, processed exactly once, or processed in creation order. Inspect GitHub Actions for cancelled/failed/queued runs during busy periods. A command's existence as a human comment is not evidence it executed. Look for the Action's acknowledgement, and reconcile currently active reminders before retrying: blindly reposting a creation command can create duplicates if an earlier run completed late. For critical workflows, use an external durable queue or independently authenticated persistent command ledger instead.
+
+The Action records a delivery marker only after a successful API response. If the delivery comment succeeds but updating the source marker fails, the next serialized scan detects the trusted delivery marker and repairs the source state without intentionally posting a second comment. A network outcome that is unknown to the client can still be ambiguous; GitHub's comment API does not provide a transaction spanning comment creation and marker update. Therefore the documented guarantee is **at-least-once, duplicate-resistant delivery**, not exactly-once delivery.
 
 ## Permissions
 
