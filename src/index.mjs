@@ -10,6 +10,7 @@ import {
   deliveryMarker,
   isDue,
   trustedReminderFromComment,
+  isGitHubActionsComment,
   formatGitHubTime
 } from "./reminders.mjs";
 
@@ -115,7 +116,7 @@ async function handleScheduledDelivery() {
       if (!isDue(reminder, now)) continue;
 
       const issueComments = await getIssueComments(issueNumber);
-      const alreadyDelivered = issueComments.some((item) => String(item.body ?? "").includes(deliveryMarker(reminder.id)));
+      const alreadyDelivered = issueComments.some((item) => isGitHubActionsComment(item) && String(item.body ?? "").includes(deliveryMarker(reminder.id)));
       if (!alreadyDelivered) await postComment(issueNumber, dueReminderBody(reminder));
       await updateComment(comment.id, sentMarkerBody(reminder));
     }
