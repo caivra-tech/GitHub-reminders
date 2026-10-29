@@ -14,13 +14,13 @@ test("listing neutralizes mentions embedded in reminder text", () => {
     writeFileSync(event, JSON.stringify({ action: "created", issue: { number: 1 }, comment: { user: { login: "owner", type: "User" }, body: "/reminders" } }));
     const marker = '<!-- github-reminders:v1\n' + JSON.stringify({ id: "abcdef12", creator: "owner", issueNumber: 1, dueAt: "2030-01-01T00:00:00Z", text: "hello @other", status: "active" }) + '\n-->';
     writeFileSync(mock, `import { writeFileSync } from "node:fs";
-const marker = ${JSON.stringify(marker)};
+const marker = ${JSON.stringify({ body: marker, user: { id: 41898282, login: "github-actions[bot]", type: "Bot" }, performed_via_github_app: { id: 15368, slug: "github-actions" } })};
 globalThis.fetch = async (_url, options = {}) => {
   if (options.method === "POST") {
     writeFileSync(process.env.TEST_OUTPUT, options.body);
     return new Response("{}", {status: 200});
   }
-  return new Response(JSON.stringify([{body: marker}]), {status: 200});
+  return new Response(JSON.stringify([marker]), {status: 200});
 };`);
     const result = spawnSync(process.execPath, ["--import", mock, resolve("src/index.mjs")], {
       encoding: "utf8",
