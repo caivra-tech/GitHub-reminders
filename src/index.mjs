@@ -2,12 +2,11 @@ import fs from "node:fs";
 import {
   parseCommand,
   createReminder,
-  decodeMarker,
   confirmationBody,
   cancelledBody,
   sentMarkerBody,
   dueReminderBody,
-  deliveryMarker,
+  reminderDeliveryMarker,
   isDue,
   trustedReminderFromComment,
   isGitHubActionsComment,
@@ -75,9 +74,11 @@ async function handleCommentCommand() {
 
   const actor = event.comment.user.login;
   const comments = command.kind === "create" ? [] : await getIssueComments(event.issue.number);
-  const owned = comments
-    .map((comment) => ({ comment, reminder: trustedReminderFromComment(comment, event.issue.number) }))
-    .filter(({ reminder }) => reminder && reminder.creator === actor);
+  const trusted = comments
+    .map((comment) => ({ comment, reminder: trustedReminderFromComment(comment, event.issue.number, repository) }))
+    .filter(({ reminder }) => reminder);
+  const owned = trusted.filter(({ reminder }) => reminder.creator.toLowerCase() === actor.toLowerCase());
+  const uniqueOwned = owned.filter(({ reminder }) => trusted.filter((entry) => entry.reminder.id === reminder.id).length === 1);
 
   if (command.kind === "create") {
     const reminder = createReminder({ creator: actor, issueNumber: event.issue.number, dueAt: command.dueAt, text: command.text });
@@ -86,7 +87,7 @@ async function handleCommentCommand() {
   }
 
   if (command.kind === "list") {
-    const active = owned.filter(({ reminder }) => reminder.status === "active");
+    const active = uniqueOwned.filter(({ reminder }) => reminder.status === "active");
     const body = active.length
       ? `⏰ Active reminders for @${actor}:\n\n${active.map(({ reminder }) => `- **${reminder.id}** — ${formatGitHubTime(reminder.dueAt)} — ${reminder.text}`).join("\n")}`
       : `@${actor}, you have no active reminders on this issue or pull request.`;
@@ -95,7 +96,12 @@ async function handleCommentCommand() {
   }
 
   if (command.kind === "cancel") {
-    const match = owned.find(({ reminder }) => reminder.id === command.id && reminder.status === "active");
+    const matching = trusted.filter(({ reminder }) => reminder.id === command.id);
+    if (matching.length > 1) {
+      await postComment(event.issue.number, "⚠️ Ambiguous reminder identifier detected. Cancellation refused; request maintainer review.");
+      return;
+    }
+    const match = uniqueOwned.find(({ reminder }) => reminder.id === command.id && reminder.status === "active");
     if (!match) {
       await postComment(event.issue.number, `⚠️ @${actor}, active reminder **${command.id}** was not found or does not belong to you.`);
       return;
@@ -112,12 +118,16 @@ async function handleScheduledDelivery() {
     for (const comment of comments) {
       const issueNumber = Number(comment.issue_url.split("/").pop());
       if (!Number.isSafeInteger(issueNumber)) continue;
-      const reminder = trustedReminderFromComment(comment, issueNumber);
+      const reminder = trustedReminderFromComment(comment, issueNumber, repository);
       if (!isDue(reminder, now)) continue;
 
       const issueComments = await getIssueComments(issueNumber);
-      const alreadyDelivered = issueComments.some((item) => isGitHubActionsComment(item) && String(item.body ?? "").includes(deliveryMarker(reminder.id)));
-      if (!alreadyDelivered) await postComment(issueNumber, dueReminderBody(reminder));
+      const matching = issueComments.filter((item) => trustedReminderFromComment(item, issueNumber, repository)?.id === reminder.id);
+      // Refuse ambiguous or replayed IDs, even when the creator differs.
+      if (matching.length !== 1 || matching[0].id !== comment.id) continue;
+      const marker = reminderDeliveryMarker(reminder, comment.id);
+      const alreadyDelivered = issueComments.some((item) => isGitHubActionsComment(item) && String(item.body ?? "").includes(marker));
+      if (!alreadyDelivered) await postComment(issueNumber, dueReminderBody(reminder, comment.id));
       await updateComment(comment.id, sentMarkerBody(reminder));
     }
     if (comments.length < 100) break;
