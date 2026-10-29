@@ -24,7 +24,7 @@ const base = {
 };
 const trusted = (reminder = base, extras = {}) => ({
   id: 41234,
-  created_at: "2026-10-29T00:00:01.000Z",
+  created_at: "2026-10-29T00:00:01Z",
   issue_url: "https://api.github.com/repos/owner/repo/issues/1",
   body: encodeMarker(reminder),
   user: { id: 41898282, login: "github-actions[bot]", type: "Bot" },
