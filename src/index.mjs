@@ -9,6 +9,7 @@ import {
   dueReminderBody,
   deliveryMarker,
   isDue,
+  sanitizeMentions,
   formatGitHubTime
 } from "./reminders.mjs";
 
@@ -86,7 +87,7 @@ async function handleCommentCommand() {
   if (command.kind === "list") {
     const active = owned.filter(({ reminder }) => reminder.status === "active");
     const body = active.length
-      ? `⏰ Active reminders for @${actor}:\n\n${active.map(({ reminder }) => `- **${reminder.id}** — ${formatGitHubTime(reminder.dueAt)} — ${reminder.text}`).join("\n")}`
+      ? `⏰ Active reminders for @${actor}:\n\n${active.map(({ reminder }) => `- **${reminder.id}** — ${formatGitHubTime(reminder.dueAt)} — ${sanitizeMentions(reminder.text)}`).join("\n")}`
       : `@${actor}, you have no active reminders on this issue or pull request.`;
     await postComment(event.issue.number, body);
     return;
