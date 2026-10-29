@@ -9,6 +9,9 @@ import {
   dueReminderBody,
   deliveryMarker,
   isDue,
+  trustedReminderFromComment,
+  isGitHubActionsComment,
+  sanitizeMentions,
   formatGitHubTime
 } from "./reminders.mjs";
 
@@ -74,7 +77,7 @@ async function handleCommentCommand() {
   const actor = event.comment.user.login;
   const comments = command.kind === "create" ? [] : await getIssueComments(event.issue.number);
   const owned = comments
-    .map((comment) => ({ comment, reminder: decodeMarker(comment.body) }))
+    .map((comment) => ({ comment, reminder: trustedReminderFromComment(comment, event.issue.number) }))
     .filter(({ reminder }) => reminder && reminder.creator === actor);
 
   if (command.kind === "create") {
@@ -86,7 +89,7 @@ async function handleCommentCommand() {
   if (command.kind === "list") {
     const active = owned.filter(({ reminder }) => reminder.status === "active");
     const body = active.length
-      ? `⏰ Active reminders for @${actor}:\n\n${active.map(({ reminder }) => `- **${reminder.id}** — ${formatGitHubTime(reminder.dueAt)} — ${reminder.text}`).join("\n")}`
+      ? `⏰ Active reminders for @${actor}:\n\n${active.map(({ reminder }) => `- **${reminder.id}** — ${formatGitHubTime(reminder.dueAt)} — ${sanitizeMentions(reminder.text)}`).join("\n")}`
       : `@${actor}, you have no active reminders on this issue or pull request.`;
     await postComment(event.issue.number, body);
     return;
@@ -108,13 +111,13 @@ async function handleScheduledDelivery() {
   for (let page = 1; ; page++) {
     const comments = await api(`/repos/${owner}/${repo}/issues/comments?sort=created&direction=asc&per_page=100&page=${page}`);
     for (const comment of comments) {
-      const reminder = decodeMarker(comment.body);
-      if (!isDue(reminder, now)) continue;
       const issueNumber = Number(comment.issue_url.split("/").pop());
       if (!Number.isSafeInteger(issueNumber)) continue;
+      const reminder = trustedReminderFromComment(comment, issueNumber);
+      if (!isDue(reminder, now)) continue;
 
       const issueComments = await getIssueComments(issueNumber);
-      const alreadyDelivered = issueComments.some((item) => String(item.body ?? "").includes(deliveryMarker(reminder.id)));
+      const alreadyDelivered = issueComments.some((item) => isGitHubActionsComment(item) && String(item.body ?? "").includes(deliveryMarker(reminder.id)));
       if (!alreadyDelivered) await postComment(issueNumber, dueReminderBody(reminder));
       await updateComment(comment.id, sentMarkerBody(reminder));
     }
