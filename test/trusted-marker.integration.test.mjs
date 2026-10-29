@@ -8,7 +8,7 @@ import { encodeMarker, createReminder, trustedReminderFromComment, validateRemin
 
 const reminder = createReminder({ creator: "owner", issueNumber: 1, dueAt: "2030-01-01T00:00:00.000Z", text: "trusted marker", now: new Date("2026-10-29T00:00:00.000Z") });
 const marker = encodeMarker(reminder);
-const trusted = { id: 1234, created_at: "2026-10-29T00:00:01.000Z", body: marker, issue_url: "https://api.github.com/repos/owner/repo/issues/1", user: { id: 41898282, login: "github-actions[bot]", type: "Bot" }, performed_via_github_app: { id: 15368, slug: "github-actions" } };
+const trusted = { id: 1234, created_at: "2026-10-29T00:00:01Z", body: marker, issue_url: "https://api.github.com/repos/owner/repo/issues/1", user: { id: 41898282, login: "github-actions[bot]", type: "Bot" }, performed_via_github_app: { id: 15368, slug: "github-actions" } };
 
 test("requires authoritative GitHub Actions actor, App provenance, and schema", () => {
   assert.deepEqual(trustedReminderFromComment(trusted, 1), reminder);
