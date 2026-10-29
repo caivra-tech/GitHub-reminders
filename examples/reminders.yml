@@ -10,6 +10,7 @@ on:
 concurrency:
   group: github-reminders-${{ github.repository }}
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
