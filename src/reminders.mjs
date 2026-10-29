@@ -84,7 +84,7 @@ export function trustedReminderFromComment(comment, expectedIssueNumber, expecte
   if (!value) return null;
   // The original comment creation time is immutable even if its body is edited.
   // Reject a marker copied from an older comment into a new bot-authored comment.
-  if (!isCanonicalIso(comment.created_at)) return null;
+  if (!isGitHubTimestamp(comment.created_at)) return null;
   if (Math.abs(Date.parse(value.createdAt) - Date.parse(comment.created_at)) > CLOCK_SKEW_MS) return null;
   return value;
 }
@@ -184,6 +184,14 @@ export function sanitizeMentions(text) {
 
 export function formatGitHubTime(iso) {
   return `<t:${Math.floor(Date.parse(iso) / 1000)}:F>`;
+}
+
+function isGitHubTimestamp(value) {
+  // GitHub REST comment timestamps use second precision (no .000 suffix).
+  return typeof value === "string"
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)
+    && !Number.isNaN(Date.parse(value))
+    && new Date(value).toISOString() === (value.includes(".") ? value : value.replace("Z", ".000Z"));
 }
 
 function isCanonicalIso(value) {
