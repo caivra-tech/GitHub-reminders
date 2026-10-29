@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: github-reminders-${{ github.repository }}
+  group: caivra-tech-reminders-v1-${{ github.repository }}-${{ github.workflow }}
   cancel-in-progress: false
   queue: max
 
