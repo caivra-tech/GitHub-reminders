@@ -22,6 +22,10 @@ on:
     - cron: "*/15 * * * *"
   workflow_dispatch:
 
+concurrency:
+  group: github-reminders-${{ github.repository }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
   issues: write
@@ -36,6 +40,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+## Delivery serialization
+
+Keep the example `concurrency` block. It serializes comment-command, manual-dispatch, and scheduled runs in one repository, preventing ordinary overlapping scans from racing through the read-then-post sequence. GitHub may retain only one pending run for a concurrency group, so this is a duplicate-reduction control, not a deadline guarantee.
+
+The Action records a delivery marker only after a successful API response. If the delivery comment succeeds but updating the source marker fails, the next serialized scan detects the trusted delivery marker and repairs the source state without intentionally posting a second comment. A network outcome that is unknown to the client can still be ambiguous; GitHub's comment API does not provide a transaction spanning comment creation and marker update. Therefore the documented guarantee is **at-least-once, duplicate-resistant delivery**, not exactly-once delivery.
 
 ## Permissions
 
