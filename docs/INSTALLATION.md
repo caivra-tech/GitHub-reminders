@@ -25,6 +25,7 @@ on:
 concurrency:
   group: github-reminders-${{ github.repository }}
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: read
@@ -43,7 +44,7 @@ jobs:
 
 ## Delivery serialization
 
-Keep the example `concurrency` block. It serializes comment-command, manual-dispatch, and scheduled runs in one repository, preventing ordinary overlapping scans from racing through the read-then-post sequence. GitHub may retain only one pending run for a concurrency group, so this is a duplicate-reduction control, not a deadline guarantee.
+Keep the example `concurrency` block, including `queue: max`. It serializes comment-command, manual-dispatch, and scheduled runs in one repository, preventing ordinary overlapping scans from racing through the read-then-post sequence. Without `queue: max`, GitHub's default single-pending-run behavior can replace pending `/remind` commands during bursts. With it, GitHub permits up to 100 pending runs in the group; additional queued runs may still be cancelled. This is bounded queueing and duplicate reduction, not guaranteed command processing under unlimited load or deadline-grade scheduling.
 
 The Action records a delivery marker only after a successful API response. If the delivery comment succeeds but updating the source marker fails, the next serialized scan detects the trusted delivery marker and repairs the source state without intentionally posting a second comment. A network outcome that is unknown to the client can still be ambiguous; GitHub's comment API does not provide a transaction spanning comment creation and marker update. Therefore the documented guarantee is **at-least-once, duplicate-resistant delivery**, not exactly-once delivery.
 
