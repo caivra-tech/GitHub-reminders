@@ -7,6 +7,11 @@ on:
     - cron: "*/15 * * * *"
   workflow_dispatch:
 
+concurrency:
+  group: caivra-tech-reminders-v1-${{ github.repository }}-${{ github.workflow }}
+  cancel-in-progress: false
+  queue: max
+
 permissions:
   contents: read
   issues: write
@@ -17,6 +22,6 @@ jobs:
     if: github.event_name != 'issue_comment' || startsWith(github.event.comment.body, '/remind')
     runs-on: ubuntu-latest
     steps:
-      - uses: caivra-tech/GitHub-reminders@v1.0.0
+      - uses: caivra-tech/GitHub-reminders@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

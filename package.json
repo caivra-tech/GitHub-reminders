@@ -1,6 +1,6 @@
 {
   "name": "github-reminders",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Free, open-source reminders for GitHub issues and pull requests, maintained by Caivra Tech LLC.",
   "author": "Caivra Tech LLC",

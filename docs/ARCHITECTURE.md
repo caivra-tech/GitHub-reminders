@@ -23,9 +23,9 @@ The hidden marker is versioned so future releases can evolve the format delibera
 
 ## Reliability
 
-Delivery is at-least-once at the scheduler boundary, with an idempotency marker used to avoid intentional duplicate reminder comments after partial workflow failures.
+Reminder delivery is **best-effort and duplicate-resistant** when the consumer installs the supplied concurrency configuration. It is not exactly-once, and the overall system does **not** guarantee at-least-once delivery: GitHub scheduled runs can be delayed, skipped, or cancelled, and queue overflow can cancel command events. The `queue: max` group serializes actual runs of the same named reminder workflow; at most 100 runs can wait, with overflow cancelled and no guaranteed FIFO order. The group name includes the project prefix, repository, and workflow name to reduce accidental cross-workflow interference. A second reminder workflow, or another workflow using the same group, is not coordinated safely. When a serialized scan runs and sees a due reminder, it tries to deliver it; a trusted delivery marker suppresses ordinary repeated posts. If delivery succeeds but updating the source marker fails, a later scan that executes can repair that state without intentionally posting again. Ambiguous API timeouts leave the delivery result uncertain: GitHub has no transaction spanning the comment creation and source-marker update. Users must inspect Actions results and bot acknowledgements during bursts. Stronger guarantees would require durable processing state or a dedicated backend.
 
-GitHub Actions scheduling is not real-time. The Action therefore makes no deadline-grade delivery guarantee.
+GitHub Actions scheduling is not real-time. The Action therefore makes no deadline-grade or guaranteed-delivery claim. Issue-comment command acknowledgment itself is best-effort under GitHub Actions queue and availability limits.
 
 ## Security boundary
 

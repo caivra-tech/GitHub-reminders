@@ -34,7 +34,7 @@ GitHub itself is the durable reminder store. When a reminder is created, the Act
 issue/PR comment -> GitHub Action -> hidden reminder marker -> scheduled scan -> GitHub mention
 ```
 
-Delivery comments include an idempotency marker so the same reminder is not intentionally re-fired after partial workflow failure or later scheduled scans.
+Delivery comments include a trusted idempotency marker. The supplied workflow serializes **one named reminder workflow per repository** with a bounded queue (up to 100 pending runs) and suppresses ordinary repeated posts. Queue overflow may cancel incoming runs **without a bot acknowledgement**, including creation and cancellation commands. GitHub scheduled scans may be late or skipped; this is **best-effort, duplicate-resistant delivery**, not guaranteed at-least-once or exactly-once delivery. GitHub comment creation and marker updates are not transactional. Check for a bot acknowledgement, and inspect GitHub Actions when commands receive no response. Do not blindly repeat creation commands without checking for delayed processing.
 
 ## Install
 
@@ -51,13 +51,13 @@ permissions:
 
 See the full [Installation Guide](docs/INSTALLATION.md).
 
-For V1, pin the Action to:
+After the reviewed v1.0.1 maintenance release has been published, pin the Action to:
 
 ```yaml
-uses: caivra-tech/GitHub-reminders@v1.0.0
+uses: caivra-tech/GitHub-reminders@v1.0.1
 ```
 
-For higher assurance, pin to an exact commit SHA.
+For higher assurance, pin to an exact reviewed release commit SHA. **The v1.0.1 tag has not been created yet; this branch is release preparation only.** The existing v1.0.0 tag remains a historical release and predates the new trust and serialization protections.
 
 ## Documentation
 
@@ -102,7 +102,7 @@ Included:
 - listing active reminders on the current issue/PR;
 - creator-only cancellation;
 - scheduled GitHub-native delivery;
-- idempotent exactly-once delivery protection;
+- serialized, best-effort duplicate-resistant delivery (bounded queue, no exact or at-least-once guarantee);
 - no runtime dependencies;
 - Node.js built-in test suite;
 - end-to-end live smoke testing on canonical `main`.
