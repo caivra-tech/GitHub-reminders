@@ -2,7 +2,7 @@
 
 All notable changes to GitHub Reminders are documented here.
 
-## [1.0.1] — UNRELEASED (candidate prepared October 29, 2026)
+## [1.0.1] — Release prepared October 30, 2026
 
 ### Security and reliability
 
@@ -14,12 +14,19 @@ All notable changes to GitHub Reminders are documented here.
 - Serialize all triggers of one reminder workflow with a project/repository/workflow-scoped GitHub Actions concurrency group (`queue: max`, `cancel-in-progress: false`).
 - Add adversarial security, retry and ambiguous-HTTP failure-injection tests; clarify that delivery is best-effort, not a durable, FIFO or exactly-once service.
 
-### Release gates
+### Final integration and validation
 
-- This entry is **not a publication announcement**. The v1.0.1 tag must not be created or moved without explicit maintainer authorization.
+- Consolidated PR #10 was squash-merged to `main` at `92f5019923cc0b5ae885c65803459904bbf21c1c`, with code identical to the live-tested integrated Action runtime.
+- Post-merge CI run `41015695619`: all 27 tests passed under each of Node 20 and Node 24, including syntax checks.
+- Genuine private-consumer `event=schedule` runs `40969564778` and `40991032041` both succeeded. The second was an independent scheduled execution; no second delivery comment was created, and the source remained `sent`.
+- Synthetic noncreator cancellation checks passed separately; a live independently authenticated second-account test was not performed. The maintainer explicitly accepted that coverage gap before integration.
+
+### Known limitations
+
 - The generic GitHub Actions bot identity is not cryptographic workflow-specific authentication. Privileged workflows remain trusted.
-- A real `event=schedule` run on the exact integrated candidate and independently authenticated second-account authorization remain unverified at the preparation checkpoint; the latter may be accepted explicitly as residual coverage risk.
-- GitHub scheduled executions can be delayed or skipped, and the bounded pending queue can cancel command events without bot acknowledgement.
+- GitHub scheduled executions can be delayed or skipped; the bounded pending queue can cancel events without bot acknowledgement.
+- Reminder delivery is best-effort and duplicate-resistant, not guaranteed at-least-once or exactly-once. No 100+ pending-run saturation test was performed.
+- The historical `v1.0.0` tag remains immutable. The new `v1.0.1` tag must refer only to the final CI-verified publication commit.
 
 ## [1.0.0] — 2026-09-11
 
