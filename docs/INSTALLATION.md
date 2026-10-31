@@ -62,7 +62,7 @@ No custom secret is required. The workflow uses GitHub's repository-scoped `GITH
 
 ## Version pinning
 
-This release-preparation branch targets **v1.0.1**, which is **not published yet**. Do not install `@v1.0.1` until the maintainer explicitly authorizes publication and the tag exists. The existing `v1.0.0` tag (commit `a98d0af72b02ffa5b11d6599cdafa09036041afe`) must remain immutable; it predates the new security and reliability fixes and should not be presented as the hardened version. For higher assurance after release, pin to the exact reviewed v1.0.1 release commit SHA. A repository ownership transfer requires checking and updating the owner portion of `uses:` references and verifying a workflow execution against the destination repository.
+The **v1.0.1** maintenance release is published, and its version tag resolves to the reviewed release commit `2b98349b0dadd9014e997bcf54197de7755e4001`. Use `@v1.0.1` as shown above, or pin to the exact release commit SHA for stronger version integrity. The existing `v1.0.0` tag (commit `a98d0af72b02ffa5b11d6599cdafa09036041afe`) must remain immutable; it predates the new security and reliability fixes and should not be presented as the hardened version. To pin by commit, replace `@v1.0.1` with `@2b98349b0dadd9014e997bcf54197de7755e4001` after verifying the release commit. A repository ownership transfer requires checking and updating the owner portion of `uses:` references and verifying a workflow execution against the destination repository.
 
 ## Scheduling behavior
 
