@@ -51,13 +51,13 @@ permissions:
 
 See the full [Installation Guide](docs/INSTALLATION.md).
 
-After the reviewed v1.0.1 maintenance release has been published, pin the Action to:
+For the published v1.0.1 maintenance release, pin the Action to:
 
 ```yaml
 uses: caivra-tech/GitHub-reminders@v1.0.1
 ```
 
-For higher assurance, pin to an exact reviewed release commit SHA. **The v1.0.1 tag has not been created yet; this branch is release preparation only.** The existing v1.0.0 tag remains a historical release and predates the new trust and serialization protections.
+For higher assurance, pin to the exact reviewed v1.0.1 release commit SHA `2b98349b0dadd9014e997bcf54197de7755e4001` instead of the version tag. The existing v1.0.0 tag remains a historical release and predates the new trust and serialization protections.
 
 ## Documentation
 
