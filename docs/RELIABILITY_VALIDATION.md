@@ -1,6 +1,14 @@
 # Reliability validation and operational boundaries
 
-This plan applies to PR #9's consumer workflow configuration, not to an unlimited-lossless command system. The production `v1.0.0` tag stays unchanged. The private validation consumer is `caivra-tech/github-reminders-validation`. No mass workflow dispatch is authorized by this document.
+Historical validation protocol: this document originated as PR #9's pre-integration plan, not a list of presently open release gates. The historical `v1.0.0` tag has not been moved. The private validation consumer is `caivra-tech/github-reminders-validation`. No mass workflow dispatch is authorized by this document.
+
+## Postrelease reconciliation — November 2, 2026
+
+- **Released:** Integrated implementation PR #10 merged at `92f5019923cc0b5ae885c65803459904bbf21c1c`. Release documentation PR #11 merged at `2b98349b0dadd9014e997bcf54197de7755e4001`; the public `v1.0.1` tag resolves to that exact commit. Subsequent PR #12 changed installation documentation only; current `main` at `a9fd101cd8ab46977b0d2098077736306d4c0dc2` passed [Node 20/24 CI](https://github.com/caivra-tech/GitHub-reminders/actions/runs/41245543023), 27/27 tests on each version.
+- **Real scheduler evidence:** Separate private-consumer `event=schedule` runs [40969564778](https://github.com/caivra-tech/github-reminders-validation/actions/runs/40969564778) and [40991032041](https://github.com/caivra-tech/github-reminders-validation/actions/runs/40991032041) succeeded. The targeted reminder reached `sent`; one source-bound delivery comment was observed and later scans did not duplicate it. Additional successful scheduled executions are not independent proof of additional deliveries.
+- **Coverage boundaries:** A separately authenticated second-user cancellation attempt and a disruptive 100+ pending-run saturation test were not performed; the founder explicitly accepted the live second-user gap. The low-load overlap exercise below is a historical proposed check, not a claim of observed overlap or a retroactive release gate. GitHub scheduling, API unknown outcomes and generic bot identity remain documented limitations.
+- **Test infrastructure:** On November 2, after inspecting test issues/PRs and finding only `sent`/`cancelled` legitimate reminders and no in-progress jobs, the private consumer's workflow `Reminder consumer validation` (ID `400693611`) was disabled using GitHub's workflow administration API. A subsequent independent read returned `disabled_manually`. The workflow source and past run evidence remain intact. This does not disable the public project's CI.
+- **Disposition:** Historical PR #9 testing plan closed by documented release decisions and evidence above, with limitations explicitly carried as non-guarantees. The sections below are retained to preserve the original test plan; they are not current outstanding acceptance tasks.
 
 ## Verified or locally automatable
 
@@ -9,7 +17,7 @@ This plan applies to PR #9's consumer workflow configuration, not to an unlimite
 3. `test/delivery-ambiguous-post.integration.test.mjs` simulates HTTP 504 after a delivery comment was actually created, **and** a 504 with no comment created. When a later GET can observe the posted comment, the retry suppresses duplicates; otherwise the retry attempts a new POST. This validates recovery in the simulated observable-state cases, not a real GitHub API's eventual consistency.
 4. Private consumer workflow at `.github/workflows/reminders.yml` uses the distinct project/repository/workflow group; successful issue-comment run [40925057742](https://github.com/caivra-tech/github-reminders-validation/actions/runs/40925057742) verifies the configured workflow can execute and respond. It does not establish queue-saturation, schedule-event or duplicate-delivery behavior under high load.
 
-## Remaining live validation gates
+## Historical live validation gates (original PR #9 plan)
 
 - **Scheduled trigger:** Check the validation repository's Actions history for a real `event: schedule` run using the default-branch workflow. Record the workflow run URL, trigger, current workflow SHA, original reminder ID, any delivery comment, and absence of duplicate delivery on a later scan. A `workflow_dispatch` run does **not** count. GitHub warns that scheduled runs can be delayed or dropped under load. Do not falsify a schedule event.
 - **Low-load overlap:** Create two or three harmless `/reminders` commands close together in the existing private consumer. Compare each run's actual job start/end times and bot acknowledgments. Confirm no observed overlapping reminder steps with the same concurrency group. This verifies an ordinary overlap, not the maximum queue limit.

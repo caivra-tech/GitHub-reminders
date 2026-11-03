@@ -1,6 +1,17 @@
 # GitHub Reminders — Ownership Transfer Verification Protocol
 
-Status: **prepared, not executed**. This document does not authorize a repository transfer or any CEOS authority-state change.
+Status: **historical pre-transfer protocol, superseded by completed transfer**. The original checklist below is retained as historical planning evidence. This document does not authorize another transfer or any CEOS authority-state change.
+
+## Post-transfer reconciliation — November 2, 2026
+
+- GitHub repository identity is verified as ID `1365976453`, now publicly hosted at [`caivra-tech/GitHub-reminders`](https://github.com/caivra-tech/GitHub-reminders). The old owner path below describes the pre-transfer state, not the current location.
+- The original `v1.0.0` tag still resolves to `a98d0af72b02ffa5b11d6599cdafa09036041afe`. The new published [`v1.0.1` release](https://github.com/caivra-tech/GitHub-reminders/releases/tag/v1.0.1) resolves to `2b98349b0dadd9014e997bcf54197de7755e4001`.
+- The private `caivra-tech/github-reminders-validation` consumer successfully resolved an exact integrated Action commit from the destination organization, exercised issue and pull-request commands and produced genuine scheduled delivery evidence. Integrated release source and consumer-pinned candidate Action code were verified blob-identical during the release audit.
+- [Current `main` CI](https://github.com/caivra-tech/GitHub-reminders/actions/runs/41245543023) passed on Node 20 and Node 24 after the documentation-only PR #12.
+- A separately authenticated second-account cancellation test was not run and was expressly accepted as a limitation. Private or unindexed consumers outside the verified scope cannot be ruled out from GitHub search.
+- The original transfer-protocol checklist below is archival: do not interpret `before transfer`, `after transfer`, or `prepared` wording as fresh work requests.
+
+## Original ownership-transfer verification protocol (historical)
 
 ## Immutable release baseline
 

@@ -19,7 +19,7 @@ Add the workflow from [`examples/reminders.yml`](examples/reminders.yml) to your
 ```text
 /remind in 7 days Revisit this before deleting the branch
 /remind in 3 hours Check CI again
-/remind at 2026-10-15T16:00:00Z Review the release candidate
+/remind at 2030-10-15T16:00:00Z Review the release candidate
 /reminders
 /remind cancel deadbeef
 ```
@@ -77,7 +77,7 @@ Scheduled GitHub Actions are not real-time schedulers. The example checks every 
 All absolute V1 reminder times use explicit ISO-8601 timestamps. Example:
 
 ```text
-/remind at 2026-10-15T16:00:00Z Check this again
+/remind at 2030-10-15T16:00:00Z Check this again
 ```
 
 Relative reminders use the time the command is processed by GitHub Actions.

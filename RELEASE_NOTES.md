@@ -31,7 +31,7 @@ GitHub Reminders v1.0.1 is a security and reliability maintenance update for the
 
 ### Release integrity
 
-Publish `v1.0.1` only against the final CI-verified commit containing these notes. Preserve the existing `v1.0.0` tag unchanged. The exact published tag SHA and release URL are verified separately after publication.
+Published [GitHub Reminders v1.0.1](https://github.com/caivra-tech/GitHub-reminders/releases/tag/v1.0.1) on October 30, 2026. The published tag resolves to the final CI-verified commit `2b98349b0dadd9014e997bcf54197de7755e4001`. The original `v1.0.0` tag remains at `a98d0af72b02ffa5b11d6599cdafa09036041afe`. GitHub release immutability was not enabled at the November 2 closeout; stable refs must not be described as technically protected.
 
 ---
 
