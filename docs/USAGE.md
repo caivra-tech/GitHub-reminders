@@ -16,7 +16,7 @@ Relative time:
 Absolute time:
 
 ```text
-/remind at 2026-10-15T16:00:00Z Review the release candidate
+/remind at 2030-10-15T16:00:00Z Review the release candidate
 ```
 
 Absolute V1 times must be explicit ISO-8601 timestamps.

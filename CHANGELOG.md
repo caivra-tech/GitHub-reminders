@@ -2,7 +2,7 @@
 
 All notable changes to GitHub Reminders are documented here.
 
-## [1.0.1] — Release prepared October 30, 2026
+## [1.0.1] — Published October 30, 2026
 
 ### Security and reliability
 
@@ -26,7 +26,7 @@ All notable changes to GitHub Reminders are documented here.
 - The generic GitHub Actions bot identity is not cryptographic workflow-specific authentication. Privileged workflows remain trusted.
 - GitHub scheduled executions can be delayed or skipped; the bounded pending queue can cancel events without bot acknowledgement.
 - Reminder delivery is best-effort and duplicate-resistant, not guaranteed at-least-once or exactly-once. No 100+ pending-run saturation test was performed.
-- The historical `v1.0.0` tag remains immutable. The new `v1.0.1` tag must refer only to the final CI-verified publication commit.
+- The historical `v1.0.0` tag still resolves to `a98d0af72b02ffa5b11d6599cdafa09036041afe`; published `v1.0.1` resolves to final CI-verified commit `2b98349b0dadd9014e997bcf54197de7755e4001`. These are observed Git references, not evidence of enforced release immutability or tag-protection rules.
 
 ## [1.0.0] — 2026-09-11
 
