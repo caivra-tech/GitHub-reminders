@@ -19,6 +19,12 @@ async function fixture(t, {lost=false,stale=false,barrier=false}={}) {
       if(barrier && gets<=2){waiting.push(()=>respond(200,[]));if(waiting.length===2){waiting.forEach(f=>f());waiting=[];}return;}
       return respond(200,stale?[]:comments);
     }
+    if(req.method==="GET" && req.url.startsWith("/repos/caivra-tech/test-consumer/issues/comments?")) return respond(200,comments);
+    if(req.method==="PATCH" && req.url.startsWith("/repos/caivra-tech/test-consumer/issues/comments/")){
+      const item=comments.find(c=>String(c.id)===req.url.split("/").pop());
+      if(!item)return respond(404,{error:"missing"});
+      item.body=JSON.parse(body).body;return respond(200,item);
+    }
     if(req.method==="POST" && req.url==="/repos/caivra-tech/test-consumer/issues/1/comments"){
       posts++;const text=JSON.parse(body).body;
       const created_at=JSON.parse(text.match(/<!-- github-reminders:v1\n([^\n]+)\n-->/)[1]).createdAt;
@@ -31,9 +37,10 @@ async function fixture(t, {lost=false,stale=false,barrier=false}={}) {
   const dir=await mkdtemp(path.join(os.tmpdir(),"reminder-test-"));
   const eventPath=path.join(dir,"event.json");await writeFile(eventPath,JSON.stringify(event));
   t.after(async()=>{await new Promise(resolve=>server.close(resolve));await rm(dir,{recursive:true,force:true});});
-  return {comments,get posts(){return posts;},async run(){
+  return {comments,get posts(){return posts;},async run(overrideEvent=event,eventName="issue_comment"){
+    await writeFile(eventPath,JSON.stringify(overrideEvent));
     return new Promise(resolve=>{
-      const child=spawn(process.execPath,[new URL("../src/index.mjs",import.meta.url).pathname],{env:{...process.env,GITHUB_TOKEN:"test",GITHUB_REPOSITORY:repository,GITHUB_EVENT_NAME:"issue_comment",GITHUB_EVENT_PATH:eventPath,GITHUB_API_URL:"http://127.0.0.1:"+server.address().port}});
+      const child=spawn(process.execPath,[new URL("../src/index.mjs",import.meta.url).pathname],{env:{...process.env,GITHUB_TOKEN:"test",GITHUB_REPOSITORY:repository,GITHUB_EVENT_NAME:eventName,GITHUB_EVENT_PATH:eventPath,GITHUB_API_URL:"http://127.0.0.1:"+server.address().port}});
       let stderr="";child.stderr.on("data",x=>stderr+=x);child.on("close",code=>resolve({code,stderr}));
     });
   }};
@@ -49,4 +56,29 @@ test("POST response lost and readback stale: fail closed",async t=>{
 });
 test("independent writers expose non-atomic creation race (known limitation)",async t=>{
   const f=await fixture(t,{barrier:true});await Promise.all([f.run(),f.run()]);assert.equal(f.posts,2);assert.equal(f.comments.length,2);
+});
+
+test("source-linked cancellation remains visible after process restart",async t=>{
+  const f=await fixture(t);
+  assert.equal((await f.run()).code,0);
+  const reminder=JSON.parse(f.comments[0].body.match(/<!-- github-reminders:v1\n([^\n]+)\n-->/)[1]);
+  const cancel={...event,comment:{...event.comment,id:123457,body:"/remind cancel "+reminder.id}};
+  assert.equal((await f.run(cancel)).code,0);
+  assert.equal(JSON.parse(f.comments[0].body.match(/<!-- github-reminders:v1\n([^\n]+)\n-->/)[1]).status,"cancelled");
+  assert.equal((await f.run(cancel)).code,0);
+  assert.equal(f.comments.filter(c=>c.body.includes("cancelled by")).length,1);
+});
+
+test("scheduled delivery of source-linked record is not repeated on restart",async t=>{
+  const f=await fixture(t);
+  assert.equal((await f.run()).code,0);
+  const reminder=JSON.parse(f.comments[0].body.match(/<!-- github-reminders:v1\n([^\n]+)\n-->/)[1]);
+  reminder.dueAt=new Date(Date.now()-1000).toISOString();
+  f.comments[0].body=f.comments[0].body.replace(/<!-- github-reminders:v1\n[^\n]+\n-->/,
+    "<!-- github-reminders:v1\n"+JSON.stringify(reminder)+"\n-->");
+  assert.equal((await f.run({}, "schedule")).code,0);
+  assert.equal(JSON.parse(f.comments[0].body.match(/<!-- github-reminders:v1\n([^\n]+)\n-->/)[1]).status,"sent");
+  const count=f.posts;
+  assert.equal((await f.run({}, "schedule")).code,0);
+  assert.equal(f.posts,count);
 });
