@@ -42,16 +42,33 @@ export function parseCommand(body, now = new Date()) {
   return { kind: "ignore" };
 }
 
-export function createReminder({ creator, issueNumber, dueAt, text, now = new Date() }) {
+export function createReminder({ creator, issueNumber, dueAt, text, now = new Date(), sourceCommentId, repository }) {
   return {
-    id: crypto.randomBytes(16).toString("hex"),
+    id: sourceCommentId === undefined ? crypto.randomBytes(16).toString("hex") : reminderIdForSource(repository, issueNumber, sourceCommentId),
     creator,
     issueNumber,
     dueAt,
     text,
     status: "active",
-    createdAt: now.toISOString()
+    createdAt: now.toISOString(),
+    ...(sourceCommentId === undefined ? {} : { sourceCommentId })
   };
+}
+
+export function reminderIdForSource(repository, issueNumber, sourceCommentId) {
+  if (typeof repository !== "string" || !/^[^/]+\/[^/]+$/.test(repository)
+    || !Number.isSafeInteger(issueNumber) || issueNumber <= 0
+    || !Number.isSafeInteger(sourceCommentId) || sourceCommentId <= 0) {
+    throw new Error("A canonical repository, issue number, and source comment ID are required.");
+  }
+  return crypto.createHash("sha256").update(JSON.stringify([
+    repository.toLowerCase(), issueNumber, sourceCommentId
+  ])).digest("hex").slice(0, 32);
+}
+
+export function sourceMatchesReminder(reminder, sourceCommentId, repository, issueNumber) {
+  return reminder?.sourceCommentId === sourceCommentId
+    && reminder?.id === reminderIdForSource(repository, issueNumber, sourceCommentId);
 }
 
 export function encodeMarker(reminder) {
@@ -131,6 +148,10 @@ export function validateReminder(value, expectedIssueNumber, now = new Date()) {
   const expectedKeys = value.status === "sent"
     ? ["id", "creator", "issueNumber", "dueAt", "text", "status", "createdAt", "sentAt"]
     : ["id", "creator", "issueNumber", "dueAt", "text", "status", "createdAt"];
+  if (Object.hasOwn(value, "sourceCommentId")) {
+    if (!Number.isSafeInteger(value.sourceCommentId) || value.sourceCommentId <= 0) return null;
+    expectedKeys.push("sourceCommentId");
+  }
   if (Object.keys(value).length !== expectedKeys.length || expectedKeys.some((key) => !Object.hasOwn(value, key))) return null;
   if (value.status === "sent") {
     if (!isCanonicalIso(value.sentAt)) return null;

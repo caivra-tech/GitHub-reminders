@@ -2,6 +2,7 @@ import fs from "node:fs";
 import {
   parseCommand,
   createReminder,
+  sourceMatchesReminder,
   confirmationBody,
   cancelledBody,
   sentMarkerBody,
@@ -60,6 +61,30 @@ async function updateComment(commentId, body) {
   return api(`/repos/${owner}/${repo}/issues/comments/${commentId}`, { method: "PATCH", body: JSON.stringify({ body }) });
 }
 
+async function postCreationWithReconciliation(issueNumber, reminder) {
+  const existing = () => getIssueComments(issueNumber);
+  const check = async () => {
+    const matching = (await existing()).filter(comment => {
+      const found = trustedReminderFromComment(comment, issueNumber, repository);
+      return found && sourceMatchesReminder(found, reminder.sourceCommentId, repository, issueNumber);
+    });
+    if (matching.length > 1) throw new Error("Duplicate source reminders detected; refusing another write.");
+    return matching.length === 1;
+  };
+  if (await check()) return;
+  if (Date.parse(reminder.dueAt) <= Date.now()) {
+    throw new Error("Unprocessed source reminder is already due; refusing a late creation.");
+  }
+  try {
+    await postComment(issueNumber, confirmationBody(reminder));
+  } catch (error) {
+    // A timeout may mean the POST succeeded. Re-read rather than blindly retry.
+    if (await check()) return;
+    throw new Error("Reminder creation outcome unknown; automatic retry refused.", { cause: error });
+  }
+  if (!await check()) throw new Error("Confirmation was not independently observable; retry refused.");
+}
+
 async function handleCommentCommand() {
   if (event.action !== "created" || !event.comment || !event.issue) return;
   if (event.comment.user?.type === "Bot") return;
@@ -82,8 +107,17 @@ async function handleCommentCommand() {
   const uniqueOwned = owned.filter(({ reminder }) => trusted.filter((entry) => entry.reminder.id === reminder.id).length === 1);
 
   if (command.kind === "create") {
-    const reminder = createReminder({ creator: actor, issueNumber: event.issue.number, dueAt: command.dueAt, text: command.text });
-    await postComment(event.issue.number, confirmationBody(reminder));
+    if (!Number.isSafeInteger(event.comment.id) || event.comment.id <= 0 || typeof event.comment.created_at !== "string") {
+      throw new Error("Missing authoritative GitHub source comment identity.");
+    }
+    const sourceTime = new Date(event.comment.created_at);
+    if (Number.isNaN(sourceTime.getTime())) throw new Error("Invalid source comment timestamp.");
+    // Reparse relative times against the immutable source comment time, not replay time.
+    const stableCommand = parseCommand(event.comment.body, sourceTime);
+    const reminder = createReminder({ creator: actor, issueNumber: event.issue.number,
+      dueAt: stableCommand.dueAt, text: stableCommand.text, now: new Date(),
+      sourceCommentId: event.comment.id, repository });
+    await postCreationWithReconciliation(event.issue.number, reminder);
     return;
   }
 
