@@ -112,7 +112,7 @@ async function handleCommentCommand() {
     // Reparse relative times against the immutable source comment time, not replay time.
     const stableCommand = parseCommand(event.comment.body, sourceTime);
     const reminder = createReminder({ creator: actor, issueNumber: event.issue.number,
-      dueAt: stableCommand.dueAt, text: stableCommand.text, now: sourceTime,
+      dueAt: stableCommand.dueAt, text: stableCommand.text, now: new Date(),
       sourceCommentId: event.comment.id, repository });
     await postCreationWithReconciliation(event.issue.number, reminder);
     return;
