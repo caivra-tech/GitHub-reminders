@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.0.2] — Proposed; not published
+
+### Creation replay resistance
+
+- Derive stable source-comment-bound reminder IDs and relative due times across replay and process restart.
+- Reconcile existing trusted confirmation comments before creation and after uncertain POST outcomes, without blind retries.
+- Reject ambiguous duplicate source records and retain compatibility with legacy reminder markers.
+- Expand deterministic replay, stale-read, uncertain-write, cancellation and delivery regression coverage.
+- Preserve the documented limitation that independent concurrent writers can race; GitHub issue-comment writes are not transactional.
+
+### Evidence and release gate
+
+- PR #14 merged as `38cd5920352cf6dd0063b733494501b515621a0e`; post-merge CI run 41963264708 passed Node 20/24 tests and checks.
+- A final release-preparation commit, its exact-head CI, tag and consumer upgrade remain subject to separate gates. No v1.0.2 tag or release exists at preparation time.
+
 All notable changes to GitHub Reminders are documented here.
 
 ## [1.0.1] — Published October 30, 2026
