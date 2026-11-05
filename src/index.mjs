@@ -72,6 +72,9 @@ async function postCreationWithReconciliation(issueNumber, reminder) {
     return matching.length === 1;
   };
   if (await check()) return;
+  if (Date.parse(reminder.dueAt) <= Date.now()) {
+    throw new Error("Unprocessed source reminder is already due; refusing a late creation.");
+  }
   try {
     await postComment(issueNumber, confirmationBody(reminder));
   } catch (error) {
@@ -111,9 +114,6 @@ async function handleCommentCommand() {
     if (Number.isNaN(sourceTime.getTime())) throw new Error("Invalid source comment timestamp.");
     // Reparse relative times against the immutable source comment time, not replay time.
     const stableCommand = parseCommand(event.comment.body, sourceTime);
-    if (Date.parse(stableCommand.dueAt) <= Date.now()) {
-      throw new Error("Source reminder is already due; refusing to create a malformed replay record.");
-    }
     const reminder = createReminder({ creator: actor, issueNumber: event.issue.number,
       dueAt: stableCommand.dueAt, text: stableCommand.text, now: new Date(),
       sourceCommentId: event.comment.id, repository });
