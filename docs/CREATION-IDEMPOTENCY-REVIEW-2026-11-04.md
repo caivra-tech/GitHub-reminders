@@ -29,3 +29,15 @@ The source's existing scheduled-delivery path is unchanged and must be validated
 8. Confirm bot identity, source comment ID, timestamp, issue number and repository are validated.
 9. Test repeated and overlapping workflow runs under actual consumer GitHub Actions configuration.
 10. Obtain owner review before merge, release, or consumer pin change.
+
+## Supported consumer operating contract
+Only one designated GitHub Reminders workflow should be installed per repository. All `issue_comment`, `schedule`, and `workflow_dispatch` triggers must share one repository-scoped concurrency group with `cancel-in-progress: false`. Do not create a second workflow or use a separate concurrency group that writes to the same issue comments. The example uses `queue: max`; the isolated consumer fixture currently omits that setting, so equivalent queue behavior has **not** been verified. The consumer remains pinned to published v1.0.1 and has not been upgraded to this draft.
+
+GitHub Actions concurrency is not a transactional lock and cannot prevent writes from external clients or separately configured workflows. On an uncertain POST outcome, the handler must not blindly retry; reconciliation and operator inspection may be necessary. Before release, inspect **all** workflows in the consumer repository and verify no alternate writer; review queue/cancellation behavior and run replay tests under actual Actions orchestration.
+
+### Independent review findings
+- The earlier CI run 41959435419 failed because the integration mock treated ordinary cancellation/delivery acknowledgement comments as if they contained reminder metadata. That is a fixture defect; the fixture was amended on this branch and requires exact-head rerun.
+- Creation remains non-atomic across independent writers; integration test deliberately reproduces two records.
+- Cancellation updates the marker before posting a user-facing acknowledgement. A failure after the update can produce a cancelled reminder without an acknowledgement; replay can produce an extra acknowledgement or a not-found response.
+- Scheduled delivery posts the notification and then updates the source marker to sent. A crash or timeout between these operations is recoverable by scanning delivery markers, provided those markers are visible. A concurrent second scheduler can still race before marker publication.
+- The current integration fixture does not prove all crash/retry or externally concurrent scenarios. Do not claim exactly-once delivery or universally idempotent cancellation.
