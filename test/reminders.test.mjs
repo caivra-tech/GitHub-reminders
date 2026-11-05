@@ -7,7 +7,10 @@ import {
   decodeMarker,
   isDue,
   sanitizeMentions,
-  deliveryMarker
+  deliveryMarker,
+  reminderIdForSource,
+  sourceMatchesReminder,
+  validateReminder
 } from "../src/reminders.mjs";
 
 const now = new Date("2026-09-11T12:00:00Z");
@@ -57,4 +60,33 @@ test("sanitizes embedded mentions", () => {
 
 test("delivery marker is deterministic for idempotency", () => {
   assert.equal(deliveryMarker("deadbeef"), "<!-- github-reminders:delivered:deadbeef -->");
+});
+
+test("replayed source comment yields the same stable reminder ID", () => {
+  const args = { creator: "octocat", issueNumber: 42, dueAt: "2026-10-15T16:00:00.000Z",
+    text: "Check this", now, sourceCommentId: 12345, repository: "Org/Repo" };
+  const first = createReminder(args);
+  const replay = createReminder({ ...args, repository: "org/repo" });
+  assert.equal(first.id, replay.id);
+  assert.equal(first.sourceCommentId, 12345);
+  assert.equal(sourceMatchesReminder(first, 12345, "org/repo", 42), true);
+  assert.equal(sourceMatchesReminder(first, 12346, "org/repo", 42), false);
+  assert.notEqual(first.id, createReminder({ ...args, sourceCommentId: 12346 }).id);
+  assert.equal(first.id, reminderIdForSource("org/repo", 42, 12345));
+});
+
+test("source-linked marker is accepted and legacy marker stays compatible", () => {
+  const args = { creator: "octocat", issueNumber: 42, dueAt: "2026-10-15T16:00:00.000Z", text: "Check this", now };
+  const legacy = createReminder(args);
+  const linked = createReminder({ ...args, sourceCommentId: 12345, repository: "org/repo" });
+  assert.deepEqual(validateReminder(decodeMarker(encodeMarker(legacy)), 42, now), legacy);
+  assert.deepEqual(validateReminder(decodeMarker(encodeMarker(linked)), 42, now), linked);
+  assert.equal(validateReminder({ ...linked, sourceCommentId: -1 }, 42, now), null);
+  assert.equal(validateReminder({ ...linked, extra: "unexpected" }, 42, now), null);
+});
+
+test("invalid source identities fail closed", () => {
+  assert.throws(() => reminderIdForSource("org/repo", 42, 0), /required/);
+  assert.throws(() => reminderIdForSource("org", 42, 1), /required/);
+  assert.throws(() => reminderIdForSource("org/repo", -1, 1), /required/);
 });
