@@ -27,7 +27,7 @@ async function fixture(t, {lost=false,stale=false,barrier=false}={}) {
     }
     if(req.method==="POST" && req.url==="/repos/caivra-tech/test-consumer/issues/1/comments"){
       posts++;const text=JSON.parse(body).body;
-      const marker=text.match(/<!-- github-reminders:v1\\n([^\\n]+)\\n-->/);
+      const marker=text.match(/<!-- github-reminders:v1\n([^\n]+)\n-->/);
       const created_at=marker?JSON.parse(marker[1]).createdAt:new Date().toISOString();
       const comment={id:1000+posts,body:text,user:{id:41898282,login:"github-actions[bot]",type:"Bot"},performed_via_github_app:{id:15368,slug:"github-actions"},issue_url:"https://api.github.com/repos/caivra-tech/test-consumer/issues/1",created_at};
       comments.push(comment);return respond(lost?503:201,lost?{error:"lost response"}:comment);
