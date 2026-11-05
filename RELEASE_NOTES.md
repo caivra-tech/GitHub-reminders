@@ -1,3 +1,31 @@
+# GitHub Reminders v1.0.2 — proposed patch release (NOT YET PUBLISHED)
+
+Release candidate for the creation replay-resistance changes merged in PR #14. Release publication, tag creation, and consumer upgrades require separate authorization.
+
+## Changes
+- Bind new reminder identity to repository, issue, and originating source-comment ID; use stable 32-hex IDs.
+- Derive relative due and creation times from the immutable source comment timestamp, not replay processing time.
+- Reconcile an existing trusted source-linked confirmation before POST, and re-read after an uncertain POST outcome instead of blindly retrying.
+- Fail closed on ambiguous duplicate source records or an unknown POST outcome with stale readback.
+- Preserve legacy marker compatibility and the existing cancellation and scheduled-delivery paths.
+
+## Validation evidence
+- PR #14 merged as `38cd5920352cf6dd0063b733494501b515621a0e`.
+- Merge-commit CI run 41963264708 passed `npm test` and `npm run check` under Node.js 20 and Node.js 24.
+- This release-preparation commit requires its own exact-head CI verification before release authorization.
+
+## Limitations
+- No atomic exactly-once creation guarantee. Independent simultaneous issue-comment writers can race through read-before-write.
+- Supported consumer contract: one designated serialized workflow per repository, shared concurrency group across triggers, `cancel-in-progress: false`; external writers are outside that serialization.
+- Unknown POST outcomes with stale GitHub readback require operator reconciliation; do not blindly retry.
+- Scheduled delivery is best-effort, may be delayed or skipped, and is not exactly-once or guaranteed at-least-once. Queue saturation can cancel unacknowledged commands.
+- Existing cancellation acknowledgement and delivery-marker crash windows remain; this patch does not claim to repair them.
+
+## Upgrade and rollback
+Do not change consumer pins before a separately authorized release and controlled validation. The isolated consumer currently pins published v1.0.1 commit `2b98349b0dadd9014e997bcf54197de7755e4001`; retain it as the rollback reference. The proposed v1.0.2 tag must target the final, exact CI-verified release-preparation commit, not a moving branch.
+
+---
+
 # GitHub Reminders v1.0.1
 
 **Caivra Tech LLC — maintenance release; final validation completed October 30, 2026.**
