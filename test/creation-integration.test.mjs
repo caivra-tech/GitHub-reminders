@@ -73,6 +73,8 @@ test("scheduled delivery of source-linked record is not repeated on restart",asy
   const f=await fixture(t);
   assert.equal((await f.run()).code,0);
   const reminder=JSON.parse(f.comments[0].body.match(/<!-- github-reminders:v1\n([^\n]+)\n-->/)[1]);
+  reminder.createdAt=new Date(Date.now()-120000).toISOString();
+  f.comments[0].created_at=reminder.createdAt;
   reminder.dueAt=new Date(Date.now()-1000).toISOString();
   f.comments[0].body=f.comments[0].body.replace(/<!-- github-reminders:v1\n[^\n]+\n-->/,
     "<!-- github-reminders:v1\n"+JSON.stringify(reminder)+"\n-->");
